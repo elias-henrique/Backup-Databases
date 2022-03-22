@@ -5,9 +5,9 @@
 
 <img align="left" width="200" height="200" src="https://user-images.githubusercontent.com/55928280/159481331-5ee9d7fc-bc0a-4267-8747-1a9dbbb28108.png">
 
-
-_Esse serviço não pode ser comerciado Autor_ - _Elias Henrique_
 <br><br><br><br><br><br><br><br><br>
+_Esse serviço não pode ser comerciado Autor_ - _Elias Henrique_
+<br>
 
 ## Instalações
 ### Requerimentos
