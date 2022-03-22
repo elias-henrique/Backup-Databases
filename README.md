@@ -48,4 +48,4 @@ Elias Henrique – [eliashenrique.pyc@gmail.com](https://mail.google.com/mail/u/
 
 ## Authors
  
-* **Elias Henrique**: @elias-henrique (https://github.com/elias-henrique)
+* **Elias Henrique**: [@elias-henrique](https://github.com/elias-henrique)
