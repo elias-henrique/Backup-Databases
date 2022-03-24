@@ -6,7 +6,7 @@
 <img align="left" width="200" height="200" src="https://user-images.githubusercontent.com/55928280/159481331-5ee9d7fc-bc0a-4267-8747-1a9dbbb28108.png">
 
 <br><br><br><br><br><br><br><br><br>
-_Esse serviço não pode ser comerciado Autor_ - _Elias Henrique_
+_Esse serviço não pode ser comercializado Autor_ - _Elias Henrique_
 <br>
 
 ## Instalações
@@ -49,4 +49,4 @@ Elias Henrique – [eliashenrique.pyc@gmail.com](https://mail.google.com/mail/u/
 
 ## Authors
  
-* **Elias Henrique**: [@elias-henrique](https://github.com/elias-henrique)
+* **Se7e**: [@elias-henrique](https://github.com/elias-henrique)
