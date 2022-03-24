@@ -1,5 +1,5 @@
 # Se7e Backup Databases
-> Fazer backup de banco de dados Postgresql, MYSQL e MARIADB
+> Fazer backup de banco de dados PostgreSQL, MYSQL e Mariadb
 ###
 
 
@@ -11,28 +11,29 @@ _Esse serviço não pode ser comerciado Autor_ - _Elias Henrique_
 
 ## Instalações
 ### Requerimentos
+  *  `linux OS`
   * `python3`
-  * install the libraries with `pip3 install pysftp`
+  * `pip3`
 
 
 ## How to run 
 
-for all information `python3 se7e-_-db.py -h or --help`
+`python3 se7e-_-db.py` to open interface
 
 
 ## Arguments to use
 ### optional arguments
-    -t TYPE, --type TYPE Use paramete -t or --type mongo|postgres|mysql
-    --host HOST Specify which database ip
-    --port PORT Specify the database port
-    -d DB, --db DB Specify a single database
-    -md MDB, --mdb MDB Pass only "true" if it contains the file "databases" in the same location as se7e-_-db.py only: MYSQL, MARIADB
-    -u USER, --user USER Specify which database user
-    -p PASSWORD, --password PASSWORD Specify what the database password is
-    -s SFTP, --sftp SFTP Pass accesses like this user:password@127.0.0.1:/desktop/destination
-
+    Ctrl+h - clear typos
+    Ctrl+c or exit - to close the script
+    Use ↑ and ↓  - arrows to move the cursor
+    Space - to select options
+    Enter - to initiate action
 
 ## Release History
+* 1.0.0
+    * created interface, file compressor and file decompressor
+    * backup mongod (in progress)
+    * restore both backups (in progress)
 * 0.0.2
     * backup mongod (in progress)
     * restore both backups (in progress)
@@ -48,4 +49,4 @@ Elias Henrique – [eliashenrique.pyc@gmail.com](https://mail.google.com/mail/u/
 
 ## Authors
  
-* **Elias Henrique**: @elias-henrique (https://github.com/elias-henrique)
+* **Elias Henrique**: [@elias-henrique](https://github.com/elias-henrique)

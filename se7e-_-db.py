@@ -1,209 +1,327 @@
-import argparse
+#!/usr/bin/python3
 import os
+import time
+import shutil
 import pathlib
-import pysftp
+import threading
 from datetime import datetime
+from zipfile import ZipFile
+import tarfile
 
-'''                                                                                                         
-              db                                                                              mm                      
-             ;MM:                                                                             MM                      
-            ,V^MM.    `7Mb,od8  .P"Ybmmm `7MM  `7MM  `7MMpMMMb.pMMMb.   .gP"Ya  `7MMpMMMb.  mmMMmm   ,pW"Wq.  ,pP"Ybd 
-           ,M  `MM      MM' "' :MI  I8     MM    MM    MM    MM    MM  ,M'   Yb   MM    MM    MM    6W'   `Wb 8I   `" 
-           AbmmmqMA     MM      WmmmP"     MM    MM    MM    MM    MM  8M""""""   MM    MM    MM    8M     M8 `YMMMa. 
-          A'     VML    MM     8M          MM    MM    MM    MM    MM  YM.    ,   MM    MM    MM    YA.   ,A9 L.   I8 
-        .AMA.   .AMMA..JMML.    YMMMMMb    `Mbod"YML..JMML  JMML  JMML. `Mbmmd' .JMML  JMML.  `Mbmo  `Ybmd9'  M9mmmP' 
-                               6'     dP                                                                              
-                               Ybmmmd'                                                                                
-'''
+try:
+    import pyfiglet
+except ImportError:
+    os.system("pip3 install pyfiglet > /dev/null")
+finally:
+    import pyfiglet
 
+try:
+    import inquirer
+except ImportError:
+    os.system("pip3 install inquirer > /dev/null")
+finally:
+    import inquirer
 
-def arguments():
-    parser = argparse.ArgumentParser(
-        description='Backup de banco de dados e restauraçao')
-    parser.add_argument(
-        '-t',
-        '--type',
-        required=True,
-        help='Use paramentro -t ou --type mongo|postgres|mysql '
-    )
-    parser.add_argument(
-        '--host',
-        required=False,
-        help='Especificar qual ip do banco de dados'
-    )
-    parser.add_argument(
-        '--port',
-        required=False,
-        help='Especificar a porta do banco de dadoss'
-    )
-    parser.add_argument(
-        '-d',
-        '--db',
-        required=False,
-        help='Especificar um unico banco de dados'
-    )
-    parser.add_argument(
-        '-md',
-        '--mdb',
-        required=False,
-        help='Passe apenas "true" se contem o arquivo "databases" no mesmo local do se7e-_-db.py apenas: MYSQL, MARIADB'
-    )
-    parser.add_argument(
-        '-u',
-        '--user',
-        required=True,
-        help='Especificar qual usuario do banco de dados'
-    )
-    parser.add_argument(
-        '-p',
-        '--password',
-        required=False,
-        help='Especifcar qual é a senha do banco de dados'
-    )
-    parser.add_argument(
-        '-s',
-        '--sftp',
-        required=False,
-        help='Passe os acessos dessa maneira user:senha@127.0.0.1:/desktop/destination'
-    )
-    args = parser.parse_args()
-    return args
+try:
+    import pysftp
+except ImportError:
+    os.system("pip3 install pysftp > /dev/null")
+finally:
+    import pysftp
+
+try:
+    from yaspin import yaspin
+except ImportError:
+    os.system("pip install yaspin > /dev/null")
+finally:
+    from yaspin import yaspin
+
+"""
+            |  | |  \ |  | |           ||   ____||   _  \     |   ____|    /   \      /      ||   ____|
+            |  | |   \|  | `---|  |----`|  |__   |  |_)  |    |  |__      /  ^  \    |  ,----'|  |__   
+            |  | |  . `  |     |  |     |   __|  |      /     |   __|    /  /_\  \   |  |     |   __|  
+            |  | |  |\   |     |  |     |  |____ |  |\  \----.|  |      /  _____  \  |  `----.|  |____ 
+            |__| |__| \__|     |__|     |_______|| _| `._____||__|     /__/     \__\  \______||_______|                                                                                      
+"""
 
 
-'''
-                     `7MM"""Yp, `7MMF' `YMM' `7MM"""Mq.
-                      MM    Yb   MM   .M'     MM   `MM.
-                      MM    dP   MM .d"       MM   ,M9 
-                      MM"""bg.   MMMMM.       MMmmdM9  
-                      MM    `Y   MM  VMA      MM       
-                      MM    ,9   MM   `MM.    MM       
-                    .JMMmmmd9  .JMML.   MMb..JMML.     
-                                                                                                
-'''
+class Interface(object):
+    def __init__(self):
+        self.colors = ("red", "green", "yellow", "blue",
+                       "magenta", "cyan", "white")
+
+    @staticmethod
+    def index():
+        questions = [
+            inquirer.Checkbox('interests',
+                              message='Select as Options',
+                              choices=['Backup', 'SFTP',
+                                       'Compress Backup',
+                                       'Decompress Backup',
+                                       'exit'],
+                              ),
+        ]
+        answers = inquirer.prompt(questions)
+        return answers
+
+    @staticmethod
+    def backup_ui():
+        questions = [
+            inquirer.List('type',
+                          message='Select which type of database',
+                          choices=['MongoDB', 'Postgresql',
+                                   'Mysql and MariaDB'],
+                          ),
+            inquirer.Text('host', message="What's your host"),
+            inquirer.Text('user', message="What's your username"),
+            inquirer.Text('port', message="What's your port"),
+            inquirer.Text('databases', message="What's your databases"),
+            inquirer.Text('password', message="What's your password")
+        ]
+        answers = inquirer.prompt(questions)
+        return answers
+
+    @staticmethod
+    def sftp_ui(files):
+        questions = [
+            inquirer.Checkbox('interests',
+                              message='Select as Options to SFTP',
+                              choices=files,
+                              ),
+            inquirer.Text('host', message="What's your host"),
+            inquirer.Text('user', message="What's your user"),
+            inquirer.Text('port', message="What's your port"),
+            inquirer.Text('password', message="What's your password"),
+            inquirer.Text('path', message="What's your path"),
+        ]
+        answers = inquirer.prompt(questions)
+        return answers
+
+    @staticmethod
+    def compress_ui(files):
+        questions = [
+            inquirer.List('type',
+                          message='Select which type of compress',
+                          choices=['zip', 'tar', 'gztar', 'bztar', 'xztar'],
+                          ),
+            inquirer.Checkbox('interests',
+                              message='Select as Options',
+                              choices=files,
+                              ),
+
+        ]
+        answers = inquirer.prompt(questions)
+        return answers
+
+    @staticmethod
+    def decompress_ui(files):
+        questions = [
+            inquirer.List('type',
+                          message='Select which type of compress',
+                          choices=['zip', 'tar', 'gztar', 'bztar', 'xztar'],
+                          ),
+            inquirer.Checkbox('interests',
+                              message='Select which type of Decompress',
+                              choices=files,
+                              ),
+        ]
+        answers = inquirer.prompt(questions)
+        return answers
+
+    def loading(self, msg):
+        with yaspin(text="Colors!") as sp:
+            for color in self.colors:
+                sp.color, sp.text = color, msg
+                time.sleep(1)
+
+
+"""
+        |   _  \      /   \      /      ||  |/  / |  |  |  | |   _  \  
+        |  |_)  |    /  ^  \    |  ,----'|  '  /  |  |  |  | |  |_)  | 
+        |   _  <    /  /_\  \   |  |     |    <   |  |  |  | |   ___/  
+        |  |_)  |  /  _____  \  |  `----.|  .  \  |  `--'  | |  |      
+        |______/  /__/     \__\  \______||__|\__\  \______/  | _|      
+"""
 
 
 class Backup(object):
-    def __init__(self, database='', host='', port='', username='', password='', dst=''):
+    def __init__(self, kwargs, path, cmdui):
         dt_string = datetime.now().strftime("%Y-%m-%d-%H-%M-%S")
-        self.database = database
-        self.username = username
-        self.password = password
-        self.host = host
         self.name_path = f"seBackup-{str(dt_string)}7e.sql"
-        self.dst = dst
+        self.kwargs = kwargs
+        self.path = path
+        self.cmdui = cmdui
 
-    def bkp_mysql(self):
-        print(
-            f"  -- Gerando Backup da base de dados {self.database} em {self.dst}/{self.name_path} ...")
-        os.system(
-            f"mysqldump --databases {self.database} -u{self.username} -p"
-            f"'{self.password}' > {self.dst}/{self.name_path}"
-        )
-        return f"{self.dst}/{self.name_path}", self.name_path
+        if self.kwargs['type'] == 'Mysql and MariaDB':
+            self.mysql()
+        elif self.kwargs['type'] == 'Postgresql':
+            self.postgres()
 
-    def bkp_postgres(self):
-        print(
-            f"  -- Gerando Backup da base de dados {self.database} "
-            f"em {self.dst}/{self.name_path} ..."
-        )
-        os.system(
-            f"PGPASSWORD='{self.password}' pg_dump -U {self.username} -h "
-            f"{self.host} -w > {self.dst}/{self.name_path}"
-        )
-        return f"{self.dst}/{self.name_path}", self.name_path
+    def mysql(self):
+        cmd = "mysqldump"
 
+        if self.kwargs['host']:
+            cmd += f" --host={self.kwargs['host']}"
+        if self.kwargs['password']:
+            cmd += f" -p '{self.kwargs['password']}'"
+        if self.kwargs['user']:
+            cmd += f" -u {self.kwargs['user']}"
+        if self.kwargs['port']:
+            cmd += f" --port={self.kwargs['port']}"
+        if self.kwargs['databases']:
+            cmd += f" --databases {self.kwargs['databases']}"
 
-'''                                  
-                                          ,...                   
-                             .M"""bgd   .d' ""  mm               
-                            ,MI    "Y   dM`     MM               
-                            `MMb.      mMMmm  mmMMmm  `7MMpdMAo. 
-                              `YMMNq.   MM      MM      MM   `Wb 
-                            .     `MM   MM      MM      MM    M8 
-                            Mb     dM   MM      MM      MM   ,AP 
-                            P"Ybmmd"  .JMML.    `Mbmo   MMbmmd'  
-                                                        MM       
-                                                      .JMML.  
-'''
+        cmd += f" > {self.path}/{self.name_path}"
+        load = threading.Thread(target=self.cmdui.loading, args=(
+            "Gerando Backup da base de dados "
+            f"{self.kwargs['databases']} em {self.path}/{self.name_path}",))
+        load.start()
+        load.join()
 
+        if not load.is_alive():
+            os.system(cmd)
 
-def sftpArgs(arg):
-    output = arg.split("@")
-    if len(output) > 1:
-        out = output[1].split(":")
-        out2 = output[0].split(":")
-        if len(out2) > 1:
-            user, passw = out2[0], out2[1]
+    def postgres(self):
+        if self.kwargs['password']:
+            cmd = f"PGPASSWORD='{self.kwargs['password']}'"
         else:
-            raise ValueError("Error: verifique se o paramentro foram passado corretamente\n"
-                             "Use: --help para mais infomaçoes")
-        if len(out) > 1:
-            ip, dst = out[0], out[1]
-        else:
-            raise ValueError("Error: verifique se o paramentro foram passado corretamente\n"
-                             "Use: --help para mais infomaçoes")
+            exit()
+        cmd += ' pg_dump'
+        if self.kwargs['host']:
+            cmd += f" --host={self.kwargs['host']}"
+        if self.kwargs['user']:
+            cmd += f" -U {self.kwargs['user']}"
+        if self.kwargs['port']:
+            cmd += f" --port={self.kwargs['port']}"
+        if self.kwargs['databases']:
+            cmd += f" -d {self.kwargs['databases']}"
+
+        cmd += f" -w > {self.path}/{self.name_path}"
+
+        load = threading.Thread(target=self.cmdui.loading, args=(
+            "Gerando Backup da base de dados "
+            f"{self.kwargs['databases']} em {self.path}/{self.name_path}",))
+        load.start()
+        load.join()
+
+        if not load.is_alive():
+            os.system(cmd)
+
+
+"""
+             /      | /  __  \  |   \/   | |   _  \  |   _  \     |   ____|    /       |    /       |
+            |  ,----'|  |  |  | |  \  /  | |  |_)  | |  |_)  |    |  |__      |   (----`   |   (----`
+            |  |     |  |  |  | |  |\/|  | |   ___/  |      /     |   __|      \   \        \   \    
+            |  `----.|  `--'  | |  |  |  | |  |      |  |\  \----.|  |____ .----)   |   .----)   |   
+             \______| \______/  |__|  |__| | _|      | _| `._____||_______||_______/    |_______/   
+"""
+
+
+def compress(kwargs):
+    for path in kwargs['interests']:
+        shutil.make_archive(path, kwargs['type'], './', path)
+
+
+def decompress(kwargs):
+    if kwargs['type'] == "zip":
+        for path in kwargs['interests']:
+            z = ZipFile(path, 'r')
+            z.extractall()
+            z.close()
     else:
-        raise ValueError("Error: verifique se o paramentro foram passado corretamente\n"
-                         "Use: --help para mais infomaçoes")
+        for path in kwargs['interests']:
+            t = tarfile.open(path)
+            t.extractall()
 
-    return user, passw, ip, dst
+
+"""
+                 _______. _______ .___________..______   
+                /       ||   ____||           ||   _  \  
+               |   (----`|  |__   `---|  |----`|  |_)  | 
+                \   \    |   __|      |  |     |   ___/  
+            .----)   |   |  |         |  |     |  |      
+            |_______/    |__|         |__|     | _|     
+"""
 
 
-def sftpExample(local_path, remote_pah, host, user, password, port=22):
+def sftpExample(local_path, kwargs):
     cnopts = pysftp.CnOpts()
     cnopts.hostkeys = None
     with pysftp.Connection(
-            host,
-            username=user,
-            password=password,
-            port=port,
+            kwargs['host'],
+            username=kwargs['user'],
+            password=kwargs['password'],
+            port=int(kwargs['port']),
             cnopts=cnopts
     ) as sftp:
-        sftp.put(str(local_path),
-                 str(remote_pah))  # upload file to public/ on remote
+        for path in kwargs['interests']:
+            sftp.put(local_path + "/" + path,
+                     kwargs['path'] + "/" + path
+                     )  # upload file to public/ on remote
         sftp.close()
 
 
+"""
+            .______       __    __  .__   __. 
+            |   _  \     |  |  |  | |  \ |  | 
+            |  |_)  |    |  |  |  | |   \|  | 
+            |      /     |  |  |  | |  . `  | 
+            |  |\  \----.|  `--'  | |  |\   | 
+            | _| `._____| \______/  |__| \__| 
+"""
+
+
+def main():
+    root_path = str(pathlib.Path(__file__).parent.resolve())
+    cmui = Interface()
+
+    if 'Backup' in opt['interests']:
+        quest = cmui.backup_ui()
+        Backup(quest, root_path, cmui)
+
+    if 'Compress Backup' in opt['interests']:
+        list_files = os.listdir(root_path)
+        quest = cmui.compress_ui(list_files)
+        load = threading.Thread(target=cmui.loading, args=(
+            "Comprimindo arquivos",))
+        load.start()
+        load.join()
+        if not load.is_alive():
+            compress(quest)
+
+    if 'Decompress Backup' in opt['interests']:
+        list_files = os.listdir(root_path)
+        quest = cmui.decompress_ui(list_files)
+        if quest:
+            load = threading.Thread(target=cmui.loading, args=(
+                "Descomprimindo arquivos",))
+            load.start()
+            load.join()
+            if not load.is_alive():
+                decompress(quest)
+
+    if 'SFTP' in opt['interests']:
+        list_files = os.listdir(root_path)
+        quest = cmui.sftp_ui(list_files)
+        if quest:
+            load = threading.Thread(target=cmui.loading, args=(
+                "Enviado arquivos via SFTP",))
+            load.start()
+            load.join()
+            if not load.is_alive():
+                sftpExample(root_path, quest)
+
+    if 'exit' in opt['interests']:
+        exit()
+
+
 if __name__ == '__main__':
-    path = str(pathlib.Path(__file__).parent.resolve())
-    args = arguments()
-    databases = ""
-
-    if args.mdb:
-        if args.mdb.lower() == "true":
-            try:
-                with open(path + "/databases", "r") as roi:
-                    r = str(roi.read()).replace("\n", " ")
-                databases = r
-            except FileNotFoundError:
-                raise NotADirectoryError("crie o arquivo 'databases' nesse diretorio")
-    else:
-        databases = args.db
-
-    bkp = Backup(
-        database=databases,
-        host=args.host,
-        port=args.port,
-        username=args.user,
-        password=args.password,
-        dst=path
-    )
-    if args.type.lower() == "mysql":
-        path, name = bkp.bkp_mysql()
-    elif args.type.lower() == "postgres":
-        path, name = bkp.bkp_postgres()
-    elif args.type.lower() == "mongo":
-        pass
-    else:
-        raise ValueError("Parametros nao passado corretamente\nUse: --help para mais informaçao")
-
-    if args.sftp:
-        user, passw, ip, dst = sftpArgs(args.sftp)
-
-        sftpExample(
-            path,
-            dst+"/"+name,
-            ip,
-            user,
-            passw
-        )
+    try:
+        figlet = pyfiglet.figlet_format("7Backup Databases", font="bulbhead")
+        print(figlet)
+        while True:
+            cmui = Interface()
+            opt = cmui.index()
+            main()
+    except (TypeError, KeyboardInterrupt):
+        exit()
