@@ -18,7 +18,7 @@ _Esse serviço não pode ser comercializado Autor_ - _Elias Henrique_
 
 ## How to run 
 
-`python3 se7e-_-db.py` to open interface
+`python3 running.py` to open interface
 
 
 ## Arguments to use
